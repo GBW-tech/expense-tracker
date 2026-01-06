@@ -1,169 +1,165 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
 <title>Expense Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- Excel export -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
-:root {
-  --glass-bg: rgba(255,255,255,0.15);
-  --glass-border: rgba(255,255,255,0.3);
+:root{
+  --glass: rgba(255,255,255,0.18);
+  --border: rgba(255,255,255,0.35);
   --blur: blur(18px);
-  --green: #4ade80;
-  --red: #fb7185;
-  --blue: #60a5fa;
+  --green:#4ade80;
+  --red:#fb7185;
+  --blue:#60a5fa;
 }
 
-* { box-sizing: border-box; font-family: system-ui; }
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: linear-gradient(120deg,#2b2d42,#5f5c7d,#7b7fa3);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #fff;
+*{box-sizing:border-box;font-family:system-ui}
+body{
+  margin:0;
+  min-height:100vh;
+  background:linear-gradient(120deg,#2b2d42,#5f5c7d);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  color:white;
 }
 
-.app {
-  width: 95%;
-  max-width: 1200px;
-  padding: 20px;
-  border-radius: 20px;
-  background: var(--glass-bg);
-  backdrop-filter: var(--blur);
-  border: 1px solid var(--glass-border);
+.hidden{display:none}
+
+.app{
+  width:95%;
+  max-width:1200px;
+  padding:20px;
+  border-radius:20px;
+  background:var(--glass);
+  backdrop-filter:var(--blur);
+  border:1px solid var(--border);
 }
 
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
 
-.hamburger {
-  font-size: 26px;
-  cursor: pointer;
+.hamburger{
+  font-size:26px;
+  cursor:pointer;
 }
 
-.menu {
-  display: none;
-  position: absolute;
-  top: 70px;
-  right: 20px;
-  background: var(--glass-bg);
-  backdrop-filter: var(--blur);
-  border: 1px solid var(--glass-border);
-  border-radius: 14px;
-  padding: 10px;
-}
-.menu button {
-  width: 100%;
-  margin: 5px 0;
+.menu{
+  position:absolute;
+  top:70px;
+  right:20px;
+  background:var(--glass);
+  backdrop-filter:var(--blur);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:10px;
+  display:none;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-top: 20px;
+.menu button{width:100%;margin:5px 0}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+  margin-top:20px;
 }
 
-.card {
-  padding: 16px;
-  border-radius: 18px;
-  background: var(--glass-bg);
-  backdrop-filter: var(--blur);
-  border: 1px solid var(--glass-border);
+.card{
+  padding:16px;
+  border-radius:18px;
+  background:var(--glass);
+  backdrop-filter:var(--blur);
+  border:1px solid var(--border);
 }
 
-input, select, button {
-  width: 100%;
-  padding: 10px;
-  margin-top: 8px;
-  border-radius: 10px;
-  border: none;
+input,select,button{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border-radius:10px;
+  border:none;
 }
 
-button {
-  cursor: pointer;
-  font-weight: 600;
+button{font-weight:600;cursor:pointer}
+.green{background:var(--green)}
+.red{background:var(--red)}
+.blue{background:var(--blue)}
+
+.list{max-height:260px;overflow-y:auto}
+.item{
+  padding:10px;
+  border-radius:12px;
+  background:rgba(255,255,255,0.12);
+  margin-bottom:8px;
 }
 
-.green { background: var(--green); }
-.red { background: var(--red); }
-.blue { background: var(--blue); }
-
-.list {
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-.item {
-  margin-bottom: 10px;
-  padding: 10px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.12);
-}
-
-.item small { opacity: 0.8; }
-
-.actions {
-  display: flex;
-  gap: 6px;
-}
-
-@media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
+@media(max-width:900px){
+  .grid{grid-template-columns:1fr}
 }
 </style>
 </head>
 
 <body>
-<div class="app">
+
+<!-- LOGIN -->
+<div class="app" id="loginBox">
+  <h2 style="text-align:center">Expense Tracker</h2>
+  <input id="loginName" placeholder="Your name">
+  <button class="green" onclick="login()">Login</button>
+</div>
+
+<!-- APP -->
+<div class="app hidden" id="app">
 
 <header>
-  <h2>Expense Tracker</h2>
+  <h2 id="welcome"></h2>
   <div class="hamburger" onclick="toggleMenu()">☰</div>
 </header>
 
 <div class="menu" id="menu">
   <button onclick="exportExcel()">Export Excel</button>
-  <button onclick="toggleCategoryManager()">Categories</button>
+  <button onclick="setBudget()">Set Budget</button>
+  <button onclick="setTheme()">Theme</button>
+  <button onclick="logout()" class="red">Logout</button>
 </div>
 
 <div class="grid">
 
-<!-- LEFT -->
+<!-- ADD -->
 <div class="card">
   <h3>Add Entry</h3>
-
   <select id="type">
     <option value="expense">Expense</option>
     <option value="income">Income</option>
   </select>
-
   <input id="name" placeholder="Name (optional)">
   <input id="amount" type="number" placeholder="Amount ₹">
-  <input id="date" type="datetime-local">
-
+  <input id="date" type="date">
   <select id="category"></select>
-
   <button class="green" onclick="addEntry()">Add</button>
 </div>
 
-<!-- RIGHT -->
+<!-- CHART -->
 <div class="card">
   <h3>Category Split</h3>
   <canvas id="chart"></canvas>
+</div>
+
+<!-- FILTER -->
+<div class="card">
+  <h3>Filter</h3>
+  <input id="from" type="date">
+  <input id="to" type="date">
+  <button class="blue" onclick="render()">Apply</button>
 </div>
 
 <!-- LIST -->
@@ -172,107 +168,135 @@ button {
   <div class="list" id="list"></div>
 </div>
 
-<!-- CATEGORY MANAGER -->
-<div class="card" id="catManager" style="display:none;">
-  <h3>Categories</h3>
-  <input id="newCat" placeholder="New category">
-  <button class="blue" onclick="addCategory()">Add Category</button>
+<!-- AI -->
+<div class="card">
+  <h3>AI Insights</h3>
+  <div id="ai"></div>
 </div>
 
 </div>
 </div>
 
 <script>
-let entries = [];
-let categories = {
-  expense: ["General","Food","Travel","Shopping","Bills"],
-  income: ["Salary","Pocket Money","Refund","Gift"]
+let user="",entries=[],budget=0,chart;
+const cats={
+  expense:["General","Food","Travel","Shopping","Bills"],
+  income:["Salary","Pocket Money","Refund","Gift"]
 };
 
-function toggleMenu(){
-  const m = document.getElementById("menu");
-  m.style.display = m.style.display === "block" ? "none" : "block";
+function login(){
+  user=loginName.value.trim();
+  if(!user)return;
+  localStorage.setItem("user",user);
+  load();
 }
 
-function toggleCategoryManager(){
-  document.getElementById("catManager").style.display =
-    document.getElementById("catManager").style.display === "none" ? "block" : "none";
+function logout(){
+  localStorage.clear();
+  location.reload();
 }
 
-function refreshCategories(){
-  const type = document.getElementById("type").value;
-  const sel = document.getElementById("category");
-  sel.innerHTML = "";
-  categories[type].forEach(c=>{
-    const o = document.createElement("option");
-    o.textContent = c;
-    sel.appendChild(o);
-  });
-}
-document.getElementById("type").onchange = refreshCategories;
-refreshCategories();
-
-function addCategory(){
-  const name = document.getElementById("newCat").value.trim();
-  if(!name) return;
-  const type = document.getElementById("type").value;
-  categories[type].push(name);
-  document.getElementById("newCat").value = "";
-  refreshCategories();
-}
-
-function addEntry(){
-  const e = {
-    type: type.value,
-    name: name.value || "(no name)",
-    amount: Number(amount.value),
-    category: category.value,
-    date: date.value || new Date().toISOString()
-  };
-  entries.push(e);
-  name.value = amount.value = "";
+function load(){
+  user=localStorage.getItem("user");
+  if(!user)return;
+  entries=JSON.parse(localStorage.getItem(user+"-data")||"[]");
+  budget=Number(localStorage.getItem(user+"-budget")||0);
+  loginBox.classList.add("hidden");
+  app.classList.remove("hidden");
+  welcome.innerText="Welcome, "+user;
+  refreshCats();
   render();
 }
 
-function render(){
-  const list = document.getElementById("list");
-  list.innerHTML = "";
-  entries.forEach((e,i)=>{
-    const d = document.createElement("div");
-    d.className = "item";
-    d.innerHTML = `
-      <b>${e.name}</b> ₹${e.amount}<br>
-      <small>${e.category} • ${e.type}</small>
-      <div class="actions">
-        <button onclick="entries.splice(${i},1);render()" class="red">Delete</button>
-      </div>`;
-    list.appendChild(d);
-  });
-  drawChart();
+function toggleMenu(){
+  menu.style.display=menu.style.display==="block"?"none":"block";
 }
 
-let chart;
-function drawChart(){
-  const data = {};
-  entries.filter(e=>e.type==="expense").forEach(e=>{
-    data[e.category] = (data[e.category]||0) + e.amount;
+function refreshCats(){
+  category.innerHTML="";
+  cats[type.value].forEach(c=>{
+    let o=document.createElement("option");
+    o.textContent=c;
+    category.appendChild(o);
   });
-  if(chart) chart.destroy();
-  chart = new Chart(document.getElementById("chart"),{
-    type:"pie",
-    data:{
-      labels:Object.keys(data),
-      datasets:[{data:Object.values(data)}]
-    }
+}
+type.onchange=refreshCats;
+
+function addEntry(){
+  entries.push({
+    type:type.value,
+    name:name.value||"(no name)",
+    amount:+amount.value,
+    category:category.value,
+    date:date.value||new Date().toISOString().slice(0,10)
   });
+  save();render();
+}
+
+function save(){
+  localStorage.setItem(user+"-data",JSON.stringify(entries));
+}
+
+function render(){
+  list.innerHTML="";
+  let f=from.value,t=to.value;
+  let filtered=entries.filter(e=>{
+    return (!f||e.date>=f)&&(!t||e.date<=t);
+  });
+  filtered.forEach((e,i)=>{
+    let d=document.createElement("div");
+    d.className="item";
+    d.innerHTML=`<b>${e.name}</b> ₹${e.amount}<br><small>${e.category} • ${e.type} • ${e.date}</small>`;
+    list.appendChild(d);
+  });
+  drawChart(filtered);
+  aiInsights(filtered);
+}
+
+function drawChart(data){
+  let m={};
+  data.filter(e=>e.type==="expense").forEach(e=>{
+    m[e.category]=(m[e.category]||0)+e.amount;
+  });
+  if(chart)chart.destroy();
+  chart=new Chart(chart,{type:"pie",data:{labels:Object.keys(m),datasets:[{data:Object.values(m)}]}});
 }
 
 function exportExcel(){
-  const ws = XLSX.utils.json_to_sheet(entries);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Data");
-  XLSX.writeFile(wb, "expenses.xlsx");
+  let sheet=XLSX.utils.json_to_sheet(entries);
+  let wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,sheet,"Data");
+  XLSX.writeFile(wb,"expenses.xlsx");
 }
+
+function setBudget(){
+  let b=prompt("Monthly budget ₹",budget);
+  if(!b)return;
+  budget=+b;
+  localStorage.setItem(user+"-budget",budget);
+}
+
+function setTheme(){
+  let url=prompt("Paste image/GIF URL for background");
+  if(!url)return;
+  document.body.style.background=`url(${url}) center/cover fixed`;
+}
+
+function aiInsights(data){
+  let total=data.filter(e=>e.type==="expense").reduce((a,b)=>a+b.amount,0);
+  let top={};
+  data.filter(e=>e.type==="expense").forEach(e=>{
+    top[e.category]=(top[e.category]||0)+e.amount;
+  });
+  let maxCat=Object.keys(top).sort((a,b)=>top[b]-top[a])[0];
+  ai.innerHTML=`
+    Total spent: ₹${total}<br>
+    Highest category: ${maxCat||"N/A"}<br>
+    ${budget&&total>budget?"⚠ Budget exceeded!":""}
+  `;
+}
+
+load();
 </script>
 </body>
 </html>
