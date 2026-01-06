@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Expense Tracker</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
+
+<!-- Chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:system-ui,Arial;
+  background:linear-gradient(135deg,#1f1c2c,#928dab);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  color:#fff;
+}
+.hidden{display:none}
+
+/* Card */
+.card{
+  width:100%;
+  max-width:1100px;
+  background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(18px);
+  border-radius:20px;
+  padding:20px;
+}
+
+/* Auth */
+.auth{
+  max-width:420px;
+}
+.auth input,.auth button{
+  width:100%;
+  padding:14px;
+  margin:8px 0;
+  border-radius:12px;
+  border:none;
+}
+.auth button{background:#4ade80;font-weight:700;cursor:pointer}
+
+/* Header */
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:16px;
+}
+.logout{
+  background:#ef4444;
+  border:none;
+  padding:10px 16px;
+  border-radius:12px;
+  color:white;
+  font-weight:700;
+  cursor:pointer;
+}
+
+/* Grid */
+.grid{
+  display:grid;
+  grid-template-columns:1.2fr 1fr;
+  gap:16px;
+}
+@media(max-width:900px){
+  .grid{grid-template-columns:1fr}
+}
+
+/* Section */
+.section{
+  background:rgba(255,255,255,0.18);
+  border-radius:16px;
+  padding:16px;
+}
+.section h3{margin-top:0}
+
+/* Inputs */
+input,select,button{
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  border-radius:10px;
+  border:none;
+}
+button.primary{background:#22c55e;font-weight:700}
+button.secondary{background:#60a5fa;font-weight:700}
+button.danger{background:#f87171;font-weight:700}
+
+/* List */
+.list{
+  max-height:280px;
+  overflow:auto;
+}
+.item{
+  background:rgba(255,255,255,0.22);
+  border-radius:10px;
+  padding:10px;
+  margin-bottom:8px;
+}
+.item-actions{
+  display:flex;
+  gap:6px;
+  margin-top:6px;
+}
+.item-actions button{flex:1}
+
+/* Modal */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.6);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+.modal.hidden{
+  display:none;
+}
+.modal-content{
+  background:rgba(30,30,50,0.95);
+  padding:20px;
+  border-radius:16px;
+  max-width:420px;
+  width:90%;
+  pointer-events:auto;
+}
+</style>
+</head>
+
+<body>
+
+<!-- AUTH -->
+<div id="authScreen" class="card auth">
+  <h2 style="text-align:center">Expense Tracker</h2>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <button onclick="register()">Register</button>
+</div>
+
+<!-- APP -->
+<div id="appScreen" class="card hidden">
+
+  <div class="header">
+    <h2>Dashboard</h2>
+    <button class="logout" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="grid">
+
+    <!-- ADD EXPENSE -->
+    <div class="section">
+      <h3>Add Expense</h3>
+      <input id="name" placeholder="Expense name (optional)">
+      <input id="amount" type="number" placeholder="Amount ₹">
+      <input id="time" type="datetime-local">
+      <select id="category"></select>
+      <button class="primary" onclick="addExpense()">Add Expense</button>
+      <p id="total"><b>Total:</b> ₹0</p>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="section">
+      <h3>Actions</h3>
+      <button class="secondary" onclick="exportExcel()">Download Excel</button>
+      <button class="secondary" onclick="openAI()">AI Insights</button>
+      <p id="analysis"></p>
+    </div>
+
+    <!-- LIST -->
+    <div class="section">
+      <h3>Expenses</h3>
+      <div class="list" id="list"></div>
+    </div>
+
+    <!-- CHART -->
+    <div class="section">
+      <h3>Category Split</h3>
+      <canvas id="chart"></canvas>
+    </div>
+
+  </div>
+</div>
+
+<!-- AI MODAL -->
+<div id="aiModal" class="modal hidden">
+  <div class="modal-content">
+    <h3>AI Insights</h3>
+    <p id="aiText">
+      AI is ready but disabled for security.<br><br>
+      Future examples:
+      • Highest spending category
+      • Monthly trends
+      • Budget suggestions
+    </p>
+    <button onclick="closeAI()">Close</button>
+  </div>
+</div>
+
+<script>
+/* DOM */
+const authScreen = document.getElementById("authScreen");
+const appScreen = document.getElementById("appScreen");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const nameInput = document.getElementById("name");
+const amountInput = document.getElementById("amount");
+const timeInput = document.getElementById("time");
+const categorySelect = document.getElementById("category");
+const listDiv = document.getElementById("list");
+const totalDiv = document.getElementById("total");
+const aiModal = document.getElementById("aiModal");
+
+/* Firebase */
+firebase.initializeApp({
+  apiKey:"AIzaSyChq6ssmvhwuh-n7gp5hf7KuBmC7Q-UBnU",
+  authDomain:"expense-tracker-4452d.firebaseapp.com",
+  projectId:"expense-tracker-4452d"
+});
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/* State */
+let user = null;
+let expenses = [];
+let categories = ["General"];
+let chart;
+
+/* Auth */
+async function register(){
+  try{
+    const u = await auth.createUserWithEmailAndPassword(
+      emailInput.value,
+      passwordInput.value
+    );
+    await u.user.sendEmailVerification();
+    alert("Verify email before login");
+  }catch(e){alert(e.message)}
+}
+async function login(){
+  try{
+    const u = await auth.signInWithEmailAndPassword(
+      emailInput.value,
+      passwordInput.value
+    );
+    if(!u.user.emailVerified){
+      alert("Verify your email first");
+      auth.signOut();
+    }
+  }catch(e){alert(e.message)}
+}
+function logout(){auth.signOut()}
+
+auth.onAuthStateChanged(async u=>{
+  if(u && u.emailVerified){
+    user = u;
+    authScreen.classList.add("hidden");
+    appScreen.classList.remove("hidden");
+
+    const d = await db.collection("users").doc(u.uid).get();
+    if(d.exists){
+      expenses = d.data().expenses || [];
+      categories = d.data().categories || ["General"];
+    }
+    render();
+  }else{
+    authScreen.classList.remove("hidden");
+    appScreen.classList.add("hidden");
+  }
+});
+
+/* Core */
+function save(){
+  db.collection("users").doc(user.uid).set({expenses,categories});
+}
+
+function render(){
+  categorySelect.innerHTML = categories.map(c=>`<option>${c}</option>`).join("");
+  listDiv.innerHTML = "";
+  let sum = 0;
+
+  expenses.forEach((e,i)=>{
+    sum += e.amount;
+    listDiv.innerHTML += `
+      <div class="item">
+        <b>${e.name || "(no name)"}</b><br>
+        ₹${e.amount} • ${e.category}<br>
+        <small>${new Date(e.time).toLocaleString()}</small>
+        <div class="item-actions">
+          <button onclick="editExpense(${i})">Edit</button>
+          <button class="danger" onclick="deleteExpense(${i})">Delete</button>
+        </div>
+      </div>
+    `;
+  });
+
+  totalDiv.innerHTML = "<b>Total:</b> ₹" + sum.toFixed(2);
+  drawChart();
+}
+
+function addExpense(){
+  if(!amountInput.value) return;
+  expenses.push({
+    name: nameInput.value,
+    amount: +amountInput.value,
+    category: categorySelect.value,
+    time: timeInput.value || new Date().toISOString()
+  });
+  save();
+  render();
+  nameInput.value = "";
+  amountInput.value = "";
+  timeInput.value = "";
+}
+
+function deleteExpense(i){
+  expenses.splice(i,1);
+  save();
+  render();
+}
+function editExpense(i){
+  const a = prompt("Amount", expenses[i].amount);
+  if(a){
+    expenses[i].amount = +a;
+    save();
+    render();
+  }
+}
+
+/* Chart */
+function drawChart(){
+  const map = {};
+  expenses.forEach(e=>{
+    map[e.category] = (map[e.category]||0) + e.amount;
+  });
+  if(chart) chart.destroy();
+  chart = new Chart(document.getElementById("chart"),{
+    type:"pie",
+    data:{labels:Object.keys(map),datasets:[{data:Object.values(map)}]},
+    options:{plugins:{legend:{labels:{color:"white"}}}}
+  });
+}
+
+/* Excel */
+function exportExcel(){
+  if(!expenses.length) return alert("No data");
+  const rows=[["Name","Amount","Category","Date"]];
+  expenses.forEach(e=>{
+    rows.push([
+      e.name||"",
+      e.amount,
+      e.category,
+      new Date(e.time).toLocaleString()
+    ]);
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Expenses");
+  XLSX.writeFile(wb,"expenses.xlsx");
+}
+
+/* AI */
+function openAI(){aiModal.classList.remove("hidden")}
+function closeAI(){aiModal.classList.add("hidden")}
+aiModal.addEventListener("click", e=>{
+  if(e.target === aiModal){
+    closeAI();
+  }
+});
+
+</script>
+
+</body>
+</html>
