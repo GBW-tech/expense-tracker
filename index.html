@@ -282,19 +282,49 @@ function setTheme(){
   document.body.style.background=`url(${url}) center/cover fixed`;
 }
 
-function aiInsights(data){
-  let total=data.filter(e=>e.type==="expense").reduce((a,b)=>a+b.amount,0);
-  let top={};
-  data.filter(e=>e.type==="expense").forEach(e=>{
-    top[e.category]=(top[e.category]||0)+e.amount;
+function analyzeData(filtered) {
+  let total = 0;
+  let byCategory = {};
+
+  filtered.forEach(e => {
+    if (e.type !== "expense") return;
+    total += e.amount;
+    byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
   });
-  let maxCat=Object.keys(top).sort((a,b)=>top[b]-top[a])[0];
-  ai.innerHTML=`
-    Total spent: ₹${total}<br>
-    Highest category: ${maxCat||"N/A"}<br>
-    ${budget&&total>budget?"⚠ Budget exceeded!":""}
-  `;
+
+  let highestCat = Object.keys(byCategory)
+    .sort((a,b) => byCategory[b] - byCategory[a])[0];
+
+  return {
+    total,
+    highestCat,
+    highestAmount: byCategory[highestCat] || 0
+  };
 }
+
+function generateAISummary(filtered) {
+  if (!filtered.length) return "No data in selected range.";
+
+  const a = analyzeData(filtered);
+
+  let summary = `
+• Total spent: ₹${a.total}
+• Highest category: ${a.highestCat || "N/A"}
+• Amount: ₹${a.highestAmount}
+  `;
+
+  if (budget && a.total > budget) {
+    summary += "\n⚠ Budget exceeded!";
+  }
+
+  return summary;
+}
+
+
+function aiInsights(filtered){
+  ai.innerText = generateAISummary(filtered);
+}
+
 
 load();
 </script>
